@@ -1,0 +1,1 @@
+Each file in this directory that ends in .conf will define a single button/media item in the interface.

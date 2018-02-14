@@ -1,0 +1,57 @@
+ScreenManagement:
+    SelectionScreen
+	
+<Button>:
+    text_size: (self.width*0.95, self.height*0.95)
+
+
+<SelectionScreen>:
+    name: 'selection'
+    
+    # Connect the ids to screen attributes
+    player: player
+    button_bar: button_bar    
+    lang_switch: lang_switch
+    
+    BoxLayout:
+        orientation: 'horizontal'
+        
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: (0.1875,1)
+                
+            BoxLayout:
+                id: button_bar
+                orientation: 'vertical'
+                size_hint: (1, 0.9)           
+
+            Button:     
+                id: lang_switch
+                text: root.manager.lang2_switch_text
+                text_size: self.size
+                markup: True
+                on_release: root.localize()
+                size_hint: (1,0.1)
+                halign: 'center'
+                valign: 'center'
+                font_size: 15
+                color: [1,1,1,1]
+                font_name: root.manager.font_lang_switch
+                background_normal: root.manager.lang_switch_background_normal
+                background_down: root.manager.lang_switch_background_down
+           
+        Video:
+            id: player
+            size_hint: (0.8125, 1)
+            source: root.manager.attractor_lang1
+            state: 'play'
+            options: {'eos': 'loop'}
+
+    
+    
+    
+    
+    
+    
+    
+    
