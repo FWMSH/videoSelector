@@ -8,11 +8,18 @@ from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
+from kivy.uix.popup import Popup
 from kivy.clock import Clock
 import time
 import glob
 import os
 from functools import partial
+
+class ListButton(Button):
+    pass
+    
+class ConfigPopup(Popup):
+    pass
             
 class SelectionScreen(Screen):
 
@@ -66,9 +73,16 @@ class SelectionScreen(Screen):
             for i in range(len(self.manager.button_ids)):
                 if choice == self.manager.button_ids[i]:
                     base_file = self.manager.button_video_file[i]
-                    split = base_file.split('.')
-                    source = split[0] + lang + '.' + split[1]
-  
+                    
+                    # This reverses the string, splits the first . (the extension)
+                    split = base_file[::-1].split('.',1)
+
+                    # This unreverses and rejoins the string with the language prefix  
+                    source = split[1][::-1] + lang + '.' + split[0][::-1]
+                    
+        # Normalize the slashes in the path 
+        source = os.path.normpath(source)
+                    
         # Reset the player
         self.player.source = source
         self.player.state = 'play'
@@ -93,6 +107,7 @@ class ScreenManagement(ScreenManager):
     button_video_file = list()
     button_text_lang1 = list()
     button_text_lang2 = list()
+    path = ''
 
     lang1_switch_text = ''
     lang2_switch_text = ''
@@ -129,9 +144,9 @@ class ScreenManagement(ScreenManager):
 
     def populate_button_bar(self,dt):
         # Function to populate the left bar with buttons defined by the 'entries' directory
-
+        
         # Find button definition files
-        files = glob.glob('entries/*.conf')
+        files = glob.glob(self.path+'entries/*.conf')
         
         # For each file, add a button to the interface
         for file in files:
@@ -147,13 +162,13 @@ class ScreenManagement(ScreenManager):
                     if line[0:6].lower() == 'lang2:':
                         text_lang2 = line[6:].strip().replace('\\n', '\n')
                     elif line[0:5].lower() == 'file:':
-                        video_file = line[5:].strip()
+                        video_file = self.path+line[5:].strip()
 
-                # id is the first substring delimited by '.'; must be unique
-                id = video_file.split('.')[0]
+                # id is everything but the file extension; must be unique
+                id = video_file[::-1].split('.',1)[1][::-1]
                 
                 # Create the button
-                button = Button(background_down = self.button_background_down,
+                button = ListButton(background_down = self.button_background_down,
                     background_normal = self.button_background_normal,
                     font_name = self.font_button,
                     font_size = 25,
@@ -173,18 +188,23 @@ class ScreenManagement(ScreenManager):
                 self.button_ids.append(id)
                 self.button_video_file.append(video_file)
 
-    def get_config(self):
-        if os.path.isfile('config.conf'):
-            with open('config.conf', 'r', encoding='utf8') as f:
+                
+    def get_config(self, file='config.conf'):
+        # Function to read a configuration file and get things going
+        
+        self.path = os.path.join(os.path.dirname(file),'')
+        
+        if os.path.isfile(file):
+            with open(file, 'r', encoding='utf8') as f:
                 for line in f:
                     if line[0:18].lower() == 'switch_text_lang1:':
                         self.lang1_switch_text = line[18:].strip().replace('\\n', '\n')
                     elif line[0:18].lower() == 'switch_text_lang2:':
                         self.lang2_switch_text = line[18:].strip().replace('\\n', '\n')
                     elif line[0:16].lower() == 'attractor_lang1:':
-                        self.attractor_lang1 = line[16:].strip()
+                        self.attractor_lang1 = self.path + line[16:].strip()
                     elif line[0:16].lower() == 'attractor_lang2:':
-                        self.attractor_lang2 = line[16:].strip()
+                        self.attractor_lang2 = self.path + line[16:].strip()
                     elif line[0:12].lower() == 'font_button:':
                         self.font_button = line[12:].strip()
                     elif line[0:17].lower() == 'font_lang_switch:':
@@ -196,17 +216,26 @@ class ScreenManagement(ScreenManager):
                     elif line[0:30].lower() == 'lang_switch_background_normal:':
                         self.lang_switch_background_normal = line[30:].strip()                        
                     elif line[0:28].lower() == 'lang_switch_background_down:':
-                        self.lang_switch_background_down = line[28:].strip()
-                        
+                        self.lang_switch_background_down = line[28:].strip()    
+
+            # Configuration file read, let's start up the rest of the app
+            self.add_widget(SelectionScreen())
+            Clock.schedule_once(self.populate_button_bar)
+            Clock.schedule_interval(self.check_for_idle, 1.) # Once per second
+            Clock.schedule_interval(self.write_analytics, 3600.) # Once per hour
+        else:
+            ConfigPopup().open()
+                    
     def __init__(self):
-        super(ScreenManagement, self).__init__()
-        self.get_config() # Must be first after super.__init__
-        Clock.schedule_once(self.populate_button_bar)
-        Clock.schedule_interval(self.check_for_idle, 1.) # Once per second
-        Clock.schedule_interval(self.write_analytics, 3600.) # Once per hour
+        super(ScreenManagement, self).__init__()   
+        
         
 class MainApp(App):
-    pass
+
+    def build(self):
+        self.manager = ScreenManagement()
+        self.manager.get_config()
+        return(self.manager)
 
 MainApp().run()
 

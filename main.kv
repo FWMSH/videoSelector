@@ -1,10 +1,22 @@
-ScreenManagement:
-    SelectionScreen
-	
-<Button>:
+#:kivy 1.1.0
+
+<ListButton>:
     text_size: (self.width*0.95, self.height*0.95)
 
-
+<ConfigPopup>:    
+    id: popup
+    BoxLayout:
+        orientation: 'vertical'
+        
+        FileChooserListView:
+            id: file_chooser
+            
+        Button:
+            text: 'Load'
+            size_hint: (1,0.1)
+            on_release: popup.dismiss()
+            on_release: app.manager.get_config(file_chooser.selection[0])
+    
 <SelectionScreen>:
     name: 'selection'
     
@@ -27,7 +39,7 @@ ScreenManagement:
 
             Button:     
                 id: lang_switch
-                text: root.manager.lang2_switch_text
+                text: app.manager.lang2_switch_text
                 text_size: self.size
                 markup: True
                 on_release: root.localize()
@@ -36,14 +48,14 @@ ScreenManagement:
                 valign: 'center'
                 font_size: 15
                 color: [1,1,1,1]
-                font_name: root.manager.font_lang_switch
-                background_normal: root.manager.lang_switch_background_normal
-                background_down: root.manager.lang_switch_background_down
+                font_name: app.manager.font_lang_switch
+                background_normal: app.manager.lang_switch_background_normal
+                background_down: app.manager.lang_switch_background_down
            
         Video:
             id: player
             size_hint: (0.8125, 1)
-            source: root.manager.attractor_lang1
+            source: app.manager.attractor_lang1
             state: 'play'
             options: {'eos': 'loop'}
 
