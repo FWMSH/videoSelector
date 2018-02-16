@@ -39,8 +39,12 @@ class SelectionScreen(Screen):
             index = self.manager.button_ids.index(child.id)
             if self.current_lang == 'lang1': # Switch to secondary language
                 child.text = self.manager.button_text_lang2[index]
+                child.background_normal = self.manager.button_background_normal_lang2[index]
+                child.background_down = self.manager.button_background_down_lang2[index]
             elif self.current_lang == 'lang2': # Switch to primary language
                 child.text = self.manager.button_text_lang1[index]
+                child.background_normal = self.manager.button_background_normal_lang1[index]
+                child.background_down = self.manager.button_background_down_lang1[index]
 
         if self.current_lang == 'lang1': # Switch to secondary langauge
             self.current_lang = 'lang2'
@@ -107,6 +111,10 @@ class ScreenManagement(ScreenManager):
     button_video_file = list()
     button_text_lang1 = list()
     button_text_lang2 = list()
+    button_background_down_lang1 = list()
+    button_background_normal_lang1 = list()
+    button_background_down_lang2 = list()
+    button_background_normal_lang2 = list()
     path = ''
 
     lang1_switch_text = ''
@@ -117,6 +125,11 @@ class ScreenManagement(ScreenManager):
     button_background_down = 'atlas://data/images/defaulttheme/button_pressed'
     lang_switch_background_normal = 'atlas://data/images/defaulttheme/button'
     lang_switch_background_down = 'atlas://data/images/defaulttheme/button_pressed'
+    
+    # These control whether or not the button to switch languages appears
+    lang_switch_opacity = 1
+    lang_switch_size_hint = (1, 0.1)
+    lang_switch_disabled = False
     
     font_button = 'Roboto-Bold.ttf'
     font_lang_switch = 'Roboto-Regular.ttf'
@@ -155,6 +168,10 @@ class ScreenManagement(ScreenManager):
                 text_lang1 = ''
                 text_lang2 = ''
                 video_file = ''
+                button_background_down_lang1 = self.button_background_down
+                button_background_normal_lang1 = self.button_background_normal
+                button_background_down_lang2 = self.button_background_down
+                button_background_normal_lang2 = self.button_background_normal
 
                 for line in f: # Parse the definition file for keywords
                     if line[0:6].lower() == 'lang1:':
@@ -163,13 +180,21 @@ class ScreenManagement(ScreenManager):
                         text_lang2 = line[6:].strip().replace('\\n', '\n')
                     elif line[0:5].lower() == 'file:':
                         video_file = self.path+line[5:].strip()
+                    elif line[0:31].lower() == 'button_background_normal_lang1:': # Per-button override
+                        button_background_normal_lang1 = line[31:].strip()
+                    elif line[0:29].lower() == 'button_background_down_lang1:': # Per-button override
+                        button_background_down_lang1 = line[29:].strip()
+                    elif line[0:31].lower() == 'button_background_normal_lang2:': # Per-button override
+                        button_background_normal_lang2 = line[31:].strip()
+                    elif line[0:29].lower() == 'button_background_down_lang2:': # Per-button override
+                        button_background_down_lang2 = line[29:].strip() 
 
                 # id is everything but the file extension; must be unique
                 id = video_file[::-1].split('.',1)[1][::-1]
                 
                 # Create the button
-                button = ListButton(background_down = self.button_background_down,
-                    background_normal = self.button_background_normal,
+                button = ListButton(background_down = button_background_down_lang1,
+                    background_normal = button_background_normal_lang1,
                     font_name = self.font_button,
                     font_size = 25,
                     halign = 'center',
@@ -185,9 +210,12 @@ class ScreenManagement(ScreenManager):
                 # Store things for later
                 self.button_text_lang1.append(text_lang1)
                 self.button_text_lang2.append(text_lang2)
+                self.button_background_down_lang1.append(button_background_down_lang1)
+                self.button_background_normal_lang1.append(button_background_normal_lang1)
+                self.button_background_down_lang2.append(button_background_down_lang2)
+                self.button_background_normal_lang2.append(button_background_normal_lang2)
                 self.button_ids.append(id)
                 self.button_video_file.append(video_file)
-
                 
     def get_config(self, file='config.conf'):
         # Function to read a configuration file and get things going
@@ -216,7 +244,12 @@ class ScreenManagement(ScreenManager):
                     elif line[0:30].lower() == 'lang_switch_background_normal:':
                         self.lang_switch_background_normal = line[30:].strip()                        
                     elif line[0:28].lower() == 'lang_switch_background_down:':
-                        self.lang_switch_background_down = line[28:].strip()    
+                        self.lang_switch_background_down = line[28:].strip() 
+                    elif line[0:20].lower() == 'disable_lang_switch:':
+                        if line[20:].strip().lower() == 'true':
+                            self.lang_switch_opacity = 0
+                            self.lang_switch_size_hint = (1, None)
+                            self.lang_switch_disabled = True
 
             # Configuration file read, let's start up the rest of the app
             self.add_widget(SelectionScreen())

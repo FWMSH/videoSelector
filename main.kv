@@ -40,10 +40,13 @@
             Button:     
                 id: lang_switch
                 text: app.manager.lang2_switch_text
+                disabled: app.manager.lang_switch_disabled
+                opacity: app.manager.lang_switch_opacity
                 text_size: self.size
                 markup: True
                 on_release: root.localize()
-                size_hint: (1,0.1)
+                size_hint: app.manager.lang_switch_size_hint
+                height: 0 # This is important for if the button is hidden
                 halign: 'center'
                 valign: 'center'
                 font_size: 15
