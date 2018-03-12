@@ -149,7 +149,7 @@ class ScreenManagement(ScreenManager):
     def write_analytics(self, dt):
         # Function to periodically write the latest analytics data to file
         
-        with open('analyics.csv', 'a') as f:
+        with open('analytics.csv', 'a') as f:
             for entry in self.get_screen('selection').selection_list:
                 f.write(entry[0]+', '+str(entry[1])+'\n')
             
@@ -269,6 +269,9 @@ class MainApp(App):
         self.manager = ScreenManagement()
         self.manager.get_config()
         return(self.manager)
+        
+    def on_stop(self):
+        self.manager.write_analytics('')
 
 MainApp().run()
 
