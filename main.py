@@ -2,7 +2,7 @@ from kivy.config import Config
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 Config.set('graphics', 'width', '960')
 Config.set('graphics', 'height', '540')
-#Config.set('graphics', 'fullscreen','auto')
+Config.set('graphics', 'fullscreen','auto')
 
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
@@ -32,6 +32,9 @@ class SelectionScreen(Screen):
     # Default video
     current_video = 'attractor'
     
+    # Holds the name of the recently-pressed button to fight button mashing
+    blocked = ''
+    
     def localize(self):
         # Function to localize the text
 
@@ -55,47 +58,57 @@ class SelectionScreen(Screen):
 
         # Reload the video in the new language
         self.choose_video(self.current_video, None)
+        
+    def unblock(self, choice, dt):
+        # Function to lift the block on a given button
+        if self.blocked == choice:
+            self.blocked = ''
             
     def choose_video(self, choice, button, loop=False):
         # Function called when a button is pressed
         # button is a dummy entry; ignore it
 
-        # Log the choice for analytics
-        self.selection_list.append((choice, time.time()))
-   
-        # Build the proper language suffix
-        lang = '_' + self.current_lang
+        if self.blocked != choice:
         
-        # Switch the video source
+            self.blocked = choice
+            Clock.schedule_once(partial(self.unblock,choice), 2)
+        
+            # Log the choice for analytics
+            self.selection_list.append((choice, time.time()))
+       
+            # Build the proper language suffix
+            lang = '_' + self.current_lang
+            
+            # Switch the video source
 
-        if choice == 'attractor':
-            if self.current_lang == 'lang1':
-                source = self.manager.attractor_lang1
+            if choice == 'attractor':
+                if self.current_lang == 'lang1':
+                    source = self.manager.attractor_lang1
+                else:
+                    source = self.manager.attractor_lang2
             else:
-                source = self.manager.attractor_lang2
-        else:
-            for i in range(len(self.manager.button_ids)):
-                if choice == self.manager.button_ids[i]:
-                    base_file = self.manager.button_video_file[i]
-                    
-                    # This reverses the string, splits the first . (the extension)
-                    split = base_file[::-1].split('.',1)
+                for i in range(len(self.manager.button_ids)):
+                    if choice == self.manager.button_ids[i]:
+                        base_file = self.manager.button_video_file[i]
+                        
+                        # This reverses the string, splits the first . (the extension)
+                        split = base_file[::-1].split('.',1)
 
-                    # This unreverses and rejoins the string with the language prefix  
-                    source = split[1][::-1] + lang + '.' + split[0][::-1]
-                    
-        # Normalize the slashes in the path 
-        source = os.path.normpath(source)
-                    
-        # Reset the player
-        self.player.source = source
-        self.player.state = 'play'
-        if loop:
-            self.player.options['eos'] = 'loop'
-        else:
-            self.player.options['eos'] = 'stop'
+                        # This unreverses and rejoins the string with the language prefix  
+                        source = split[1][::-1] + lang + '.' + split[0][::-1]
+                        
+            # Normalize the slashes in the path 
+            source = os.path.normpath(source)
+                        
+            # Reset the player
+            self.player.source = source
+            self.player.state = 'play'
+            if loop:
+                self.player.options['eos'] = 'loop'
+            else:
+                self.player.options['eos'] = 'stop'
 
-        self.current_video = choice
+            self.current_video = choice
         self.manager.ticks_idle = 0
         
     def __init__(self, **kwargs):        
