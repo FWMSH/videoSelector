@@ -14,6 +14,8 @@ import time
 import glob
 import os
 from functools import partial
+#import cProfile
+#from random import shuffle
 
 class ListButton(Button):
     pass
@@ -37,6 +39,8 @@ class SelectionScreen(Screen):
     
     def localize(self):
         # Function to localize the text
+        
+        #self.manager.debug_list.append(('localize:',time.time()))
 
         for child in self.ids['button_bar'].children:
             index = self.manager.button_ids.index(child.id)
@@ -57,21 +61,28 @@ class SelectionScreen(Screen):
             self.lang_switch.text = self.manager.lang2_switch_text
 
         # Reload the video in the new language
-        self.choose_video(self.current_video, None)
+        self.choose_video(self.current_video, None, noblock=True)
         
     def unblock(self, choice, dt):
         # Function to lift the block on a given button
+        
+        #self.manager.debug_list.append(('unblock:',time.time()))
+        
         if self.blocked == choice:
             self.blocked = ''
             
-    def choose_video(self, choice, button, loop=False):
+    def choose_video(self, choice, button, loop=False, noblock=False):
         # Function called when a button is pressed
         # button is a dummy entry; ignore it
 
-        if self.blocked != choice:
+        #self.manager.debug_list.append(('chose_video:',time.time()))
+        if self.blocked != choice or noblock: # Fight button mashing
         
-            self.blocked = choice
-            Clock.schedule_once(partial(self.unblock,choice), 2)
+            #self.manager.debug_list.append(('chose_video: not blocked',time.time()))
+        
+            if not noblock:
+                self.blocked = choice
+                Clock.schedule_once(partial(self.unblock,choice), 2)
         
             # Log the choice for analytics
             self.selection_list.append((choice, time.time()))
@@ -82,11 +93,13 @@ class SelectionScreen(Screen):
             # Switch the video source
 
             if choice == 'attractor':
+                #self.manager.debug_list.append(('chose_video: attractor',time.time()))
                 if self.current_lang == 'lang1':
                     source = self.manager.attractor_lang1
                 else:
                     source = self.manager.attractor_lang2
             else:
+                #self.manager.debug_list.append(('chose_video: ' + choice,time.time()))
                 for i in range(len(self.manager.button_ids)):
                     if choice == self.manager.button_ids[i]:
                         base_file = self.manager.button_video_file[i]
@@ -101,6 +114,7 @@ class SelectionScreen(Screen):
             source = os.path.normpath(source)
                         
             # Reset the player
+            self.player.unload()
             self.player.source = source
             self.player.state = 'play'
             if loop:
@@ -119,6 +133,7 @@ class ScreenManagement(ScreenManager):
     # Default parameter values
 
     ticks_idle = 0 # 1 tick per second
+    #debug_list = list() # For debugging
     
     button_ids = list()
     button_video_file = list()
@@ -151,6 +166,7 @@ class ScreenManagement(ScreenManager):
         # Function to watch for idle and reset the screenmanager
     
         if self.get_screen('selection').player.state == 'stop':
+            #self.debug_list.append(('check_for_idle: player stopped, checking idle',time.time()))
             if self.ticks_idle < 60:
                 self.ticks_idle += 1
             else:
@@ -162,14 +178,23 @@ class ScreenManagement(ScreenManager):
     def write_analytics(self, dt):
         # Function to periodically write the latest analytics data to file
         
+        #self.debug_list.append(('write_analytics:',time.time()))
+        
         with open('analytics.csv', 'a') as f:
             for entry in self.get_screen('selection').selection_list:
                 f.write(entry[0]+', '+str(entry[1])+'\n')
+                
+        # with open('debug.csv', 'a') as f:
+            # for entry in self.debug_list:
+                # f.write(entry[0]+', '+str(entry[1])+'\n')
             
         self.get_screen('selection').selection_list = list()
+        #self.debug_list = list()
 
     def populate_button_bar(self,dt):
         # Function to populate the left bar with buttons defined by the 'entries' directory
+        
+        #self.debug_list.append(('populate_button_bar:',time.time()))
         
         # Find button definition files
         files = glob.glob(self.path+'entries/*.conf')
@@ -233,6 +258,8 @@ class ScreenManagement(ScreenManager):
     def get_config(self, file='config.conf'):
         # Function to read a configuration file and get things going
         
+        #self.debug_list.append(('get_config:',time.time()))
+        
         self.path = os.path.join(os.path.dirname(file),'')
         
         if os.path.isfile(file):
@@ -269,10 +296,17 @@ class ScreenManagement(ScreenManager):
             Clock.schedule_once(self.populate_button_bar)
             Clock.schedule_interval(self.check_for_idle, 1.) # Once per second
             Clock.schedule_interval(self.write_analytics, 3600.) # Once per hour
+            #Clock.schedule_interval(self.test_cycler, 5.)
         else:
             ConfigPopup().open()
+            
+    # def test_cycler(self, dt):
+        # vids = list(['attractor', 'media/ural', 'media/arctic', 'media/heat', 'media/antarctica', 'media/glacier'])
+        # shuffle(vids)
+        # self.get_screen('selection').choose_video(vids[0],None)      
                     
     def __init__(self):
+        #self.debug_list.append(('__init__',time.time()))
         super(ScreenManagement, self).__init__()   
         
         
@@ -281,10 +315,15 @@ class MainApp(App):
     def build(self):
         self.manager = ScreenManagement()
         self.manager.get_config()
+        #self.profile = cProfile.Profile()
+        #self.profile.enable()
         return(self.manager)
         
     def on_stop(self):
         self.manager.write_analytics('')
+        #self.profile.disable()
+        #self.profile.dump_stats('myapp.profile')
+        #pdb.set_trace()
 
 MainApp().run()
 
